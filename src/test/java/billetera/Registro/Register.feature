@@ -35,13 +35,41 @@ Feature: Registrar usuarios
     When method post
     Then status 201
     And print response
+    And karate.write(usuario1, 'datausers/user1.json')
 
   Scenario: Registrar usuario2
     Given path '/auth/v1/register'
     And header x-channel = 'POSTMAN'
     * def usuario2 = karate.get('global.usuarios')[1]
-    * print 'usuario2:' , usuario2
     * request usuario2
     When method post
     Then status 201
     And print response
+    And karate.write(usuario2, 'datausers/user2.json')
+
+  Scenario: Login de user 1
+    Given path '/auth/v1/login'
+    And header x-channel = 'POSTMAN'
+    * def credentials_user1 = read('file:target/datausers/user1.json')
+    * string user1_phone = credentials_user1.phone
+    * string user1_pin = credentials_user1.pin
+    * request userpass1 = { phone: user1_phone, pin: user1_pin }
+    When method post
+    Then status 200
+    And karate.write(response, 'datausers/sesion_user1.json')
+
+  Scenario: Depositar a user 1
+    Given url 'http://134.209.211.10:4002/wallet/v1/deposit'
+    And header x-channel = 'POSTMAN'
+    * def user1data = read('file:target/datausers/sesion_user1.json')
+    And header Authorization = 'Bearer ' + user1data.token
+    And request
+    """
+    {
+      "amount": 500
+    }
+    """
+    When method post
+    Then status 200
+    And match response.newBalance == 500
+    And karate.write(response, 'datausers/1ersaldo_user1.json')
